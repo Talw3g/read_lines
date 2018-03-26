@@ -1,0 +1,7 @@
+[package]
+name = "read_lines"
+version = "0.1.0"
+authors = ["Thibault <tmarion90@gmail.com>"]
+
+[dependencies]
+error-chain = "0.11.0"
