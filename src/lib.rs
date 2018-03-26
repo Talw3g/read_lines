@@ -20,7 +20,6 @@ pub mod read_line {
     use std::fs::File;
     use std::io::prelude::*;
     use std::iter::*;
-    use std::path::PathBuf;
 
     enum State {
         CR,
@@ -37,39 +36,35 @@ pub mod read_line {
 
 
     pub struct LineReader {
-        file: Option<File>,
+        file: File,
         state: State,
         ft: FileType,
     }
 
     impl LineReader {
-        fn new(path: PathBuf) -> Result<LineReader> {
+        pub fn new(file: File) -> Result<LineReader> {
             Ok(LineReader {
-                file: Some(File::open(path)
-                    .chain_err(|| "Could not open file")?),
+                file,
                 state: State::Other,
                 ft: FileType::Unknown,
             })
         }
 
         fn read_to_vec(&mut self) -> Result<Option<Vec<u8>>> {
-            let file = match self.file {
-                Some(ref file) => file,
-                None => bail!("No file opened, aborting."),
-            };
+            let file = &self.file;
             let mut line = Vec::new();
             for item in file.bytes() {
 
                 let item = item.chain_err(|| "Error iterating over byte")?;
 
                 if self.ft == FileType::Unix && item == b'\r' {
-                    bail!("Wrong EOL1");
+                    bail!("Found CR symbol in Unix-type file");
                 }
 
                 match item {
                     b'\r' => {
                         match self.state {
-                            State::CR => bail!("Wrong EOL2"),
+                            State::CR => bail!("Found two consecutive CR symbols"),
                             _ => self.state = State::CR,
                         }
                     },
@@ -85,7 +80,7 @@ pub mod read_line {
                                     FileType::Unix => {
                                         return Ok(Some(line))
                                     },
-                                    FileType::Win => bail!("Wrong EOL3"),
+                                    FileType::Win => bail!("Found LF instead of CRLF in Windows-type file"),
                                     FileType::Unknown => {
                                         self.ft = FileType::Unix;
                                         return Ok(Some(line))
@@ -115,7 +110,7 @@ pub mod read_line {
                 None => return Ok(None),
             };
             let string = String::from_utf8(vec)
-                .chain_err(|| "Error converting utf8 to string")?;
+                .chain_err(|| "Error converting u8 to string")?;
             Ok(Some(string))
         }
     }
@@ -134,20 +129,14 @@ pub mod read_line {
         }
     }
 
-
-
-    pub fn lines(path: PathBuf) -> Result<LineReader> {
-        Ok(LineReader::new(path)?)
-    }
-
 }
 
 
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+//#[cfg(test)]
+//mod tests {
+//    #[test]
+//    fn it_works() {
+//        assert_eq!(2 + 2, 4);
+//    }
+//}
